@@ -9,20 +9,14 @@ const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures", "fake-kane.mjs");
 
 /**
- * The fake takes its mode as its only argument, so each test runs
- * `node fake-kane.mjs <mode>` through the real spawn path.
+ * The stub is a node script, so every call goes through the interpreter.
+ * It behaves according to the argv it receives, like the real CLI.
  */
-function run(mode, opts = {}) {
-  return runKane([mode], {
-    bin: process.execPath,
-    ...opts,
-    // process.execPath is node; the script path has to be the first argv entry.
-    // runKane spawns `bin argv...`, so prepend it here.
-  });
-}
+const run = (args, opts = {}) =>
+  runKane([FAKE, ...args], { bin: process.execPath, cwd: here, ...opts });
 
 test("a completed run is COMPLETE and keeps every event", async () => {
-  const r = await runKane([FAKE, "ok"], { bin: process.execPath });
+  const r = await run([]);
   assert.equal(r.outcome, OUTCOME.COMPLETE);
   assert.equal(r.code, 0);
   assert.ok(r.events.some((e) => e.type === "commit"));
@@ -30,14 +24,14 @@ test("a completed run is COMPLETE and keeps every event", async () => {
 });
 
 test("exit 2 surfaces REFUSED with the recovery command", async () => {
-  const r = await runKane([FAKE, "refused"], { bin: process.execPath });
+  const r = await run(["design", "tests"]);
   assert.equal(r.outcome, OUTCOME.REFUSED);
   assert.equal(r.code_name, "UC_UNREVIEWED");
   assert.match(r.next[0].cmd, /context review --approve/);
 });
 
 test("exit 3 surfaces PAUSED with the session and resume argv", async () => {
-  const r = await runKane([FAKE, "paused"], { bin: process.execPath });
+  const r = await run(["context", "extract"]);
   assert.equal(r.outcome, OUTCOME.PAUSED);
   assert.equal(r.session, "ext-test-1");
   assert.equal(r.questions.length, 1);
@@ -56,27 +50,27 @@ test("exit 3 surfaces PAUSED with the session and resume argv", async () => {
 });
 
 test("exit 3 with no pause payload is a failure", async () => {
-  const r = await runKane([FAKE, "nopause"], { bin: process.execPath });
+  const r = await run(["--nopause"]);
   assert.equal(r.outcome, OUTCOME.FAILED);
   assert.match(r.error, /without a session_paused/);
 });
 
 test("non-JSON noise is ignored, the real event still lands", async () => {
-  const r = await runKane([FAKE, "broken"], { bin: process.execPath });
+  const r = await run(["--broken"]);
   assert.equal(r.outcome, OUTCOME.FAILED);
   assert.ok(r.events.every((e) => typeof e === "object"));
   assert.ok(r.events.some((e) => e.type === "done"));
 });
 
 test("a run that overruns its deadline is killed and reported as TIMEOUT", async () => {
-  const r = await runKane([FAKE, "slow"], { bin: process.execPath, timeoutMs: 300 });
+  const r = await run(["--hang"], { timeoutMs: 400 });
   assert.equal(r.outcome, OUTCOME.TIMEOUT);
 });
 
 test("onEvent sees each parsed event as it arrives", async () => {
   const seen = [];
-  await runKane([FAKE, "ok"], { bin: process.execPath, onEvent: (e) => seen.push(e.type) });
-  assert.ok(seen.includes("run_start"));
+  await run([], { onEvent: (e) => seen.push(e.type) });
+  assert.ok(seen.includes("commit"));
   assert.equal(seen.at(-1), "done");
 });
 
