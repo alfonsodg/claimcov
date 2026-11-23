@@ -14,6 +14,7 @@ import { basename, join, resolve } from "node:path";
 import { OUTCOME } from "./kane.mjs";
 import { runUntilDone } from "./loop.mjs";
 import { coverageEvent, buildReport, summarise, exitCodeFor } from "./report.mjs";
+import { applyVariables } from "./variables.mjs";
 
 const exists = async (p) => {
   try {
@@ -136,10 +137,23 @@ export async function verify(opts = {}) {
     record({ step: "design", id, outcome: run.outcome });
   }
 
+  // 3b. Fill in the values the design declared. Without this every test body
+  //     still contains {{start_url}}, so it fails for the wrong reason and the
+  //     failure looks like a false claim rather than a missing input.
+  const vars = await applyVariables(cwd, { url });
+  record({
+    step: "variables",
+    outcome: Object.keys(vars.filled).length ? "filled" : "none",
+    filled: Object.keys(vars.filled),
+    skipped: Object.keys(vars.skipped),
+  });
+
   // 4. Run the tests, unless the caller only wanted the design.
+  //    `testrun` takes `--agent`, not `--mode agent`: it is the NDJSON switch,
+  //    and an unknown option is a hard refusal with exit 2.
   if (!skipRun && designed.some((d) => d.outcome === OUTCOME.COMPLETE)) {
-    const run = await runUntilDone(["testrun", "run"], { cwd, url });
-    record({ step: "testrun", outcome: run.outcome });
+    const run = await runUntilDone(["testrun", "run", "--agent"], { cwd, url });
+    record({ step: "testrun", outcome: run.outcome, error: run.error });
   }
 
   // 5. Prove. `cover --json` is the only thing that knows what passed.
