@@ -46,6 +46,20 @@ export function parseEvent(line) {
 }
 
 /**
+ * Normalise the `next` hints a run carries.
+ *
+ * The shapes differ by event: the `done` summary carries objects with `cmd` and
+ * `why`, while the `error` event may carry bare command strings. Both mean the
+ * same thing, so callers get one shape and never see a `cmd` of undefined.
+ */
+export function normaliseNext(list) {
+  if (!Array.isArray(list)) return [];
+  return list
+    .map((n) => (typeof n === "string" ? { cmd: n } : n))
+    .filter((n) => n && typeof n.cmd === "string" && n.cmd.length > 0);
+}
+
+/**
  * Pull the structured meaning out of a finished run.
  *
  * The `done` event is the authoritative summary; the exit code is the fallback
@@ -64,7 +78,7 @@ export function classify(events, code) {
       resume: paused.resume,
       expiresAt: paused.expires_at,
       questions: paused.pending_questions ?? [],
-      next: paused.next ?? done?.next ?? [],
+      next: normaliseNext(paused.next ?? done?.next ?? []),
     };
   }
 
@@ -74,7 +88,7 @@ export function classify(events, code) {
       outcome: OUTCOME.FAILED,
       code,
       error: "exit 3 without a session_paused event",
-      next: done?.next ?? [],
+      next: normaliseNext(done?.next ?? []),
     };
   }
 
@@ -84,19 +98,19 @@ export function classify(events, code) {
       code,
       error: error?.message,
       code_name: error?.code,
-      next: done?.next ?? error?.next ?? [],
+      next: normaliseNext(done?.next ?? error?.next ?? []),
     };
   }
 
   if (code === EXIT.OK) {
-    return { outcome: OUTCOME.COMPLETE, code, next: done?.next ?? [] };
+    return { outcome: OUTCOME.COMPLETE, code, next: normaliseNext(done?.next ?? []) };
   }
 
   return {
     outcome: OUTCOME.FAILED,
     code,
     error: done?.status ?? "unknown failure",
-    next: done?.next ?? [],
+    next: normaliseNext(done?.next ?? []),
   };
 }
 
