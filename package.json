@@ -1,0 +1,33 @@
+{
+  "name": "claimcov",
+  "version": "0.1.0",
+  "description": "Prove your documentation claims in a real browser with Kane CLI",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20"
+  },
+  "bin": {
+    "claimcov": "./cli.mjs"
+  },
+  "main": "./src/index.mjs",
+  "scripts": {
+    "test": "node --test"
+  },
+  "keywords": [
+    "kane-cli",
+    "testing",
+    "documentation",
+    "coverage",
+    "ai-agents",
+    "verification"
+  ],
+  "peerDependencies": {
+    "@testmuai/kane-cli": ">=0.10.0"
+  },
+  "peerDependenciesMeta": {
+    "@testmuai/kane-cli": {
+      "optional": true
+    }
+  }
+}
