@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Tasklist — claimcov demo</title>
+    <style>
+      :root {
+        --bg: #0f1115;
+        --panel: #171a21;
+        --line: #262b35;
+        --text: #e6e8ec;
+        --muted: #8b93a3;
+        --accent: #5eead4;
+        --danger: #f87171;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        padding: 2rem 1rem;
+        font: 15px/1.5 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        display: flex;
+        justify-content: center;
+      }
+      main { width: 100%; max-width: 640px; }
+      h1 { font-size: 1.4rem; margin: 0 0 .25rem; }
+      .sub { color: var(--muted); font-size: .85rem; margin-bottom: 1.5rem; }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+      }
+      label { display: block; font-size: .8rem; color: var(--muted); margin-bottom: .35rem; }
+      input, select, button {
+        font: inherit;
+        color: var(--text);
+        background: #0f1115;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        padding: .5rem .65rem;
+      }
+      input { width: 100%; }
+      button {
+        cursor: pointer;
+        background: var(--accent);
+        color: #06231f;
+        border: none;
+        font-weight: 600;
+      }
+      button.secondary { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+      .row { display: flex; gap: .5rem; margin-top: .75rem; }
+      .row > input { flex: 1; }
+      ul { list-style: none; margin: 0; padding: 0; }
+      li {
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        padding: .55rem 0;
+        border-bottom: 1px solid var(--line);
+      }
+      li:last-child { border-bottom: none; }
+      .tag {
+        font-size: .72rem;
+        padding: .1rem .45rem;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        color: var(--muted);
+      }
+      .done { text-decoration: line-through; color: var(--muted); }
+      .empty { color: var(--muted); font-size: .9rem; padding: .5rem 0; }
+      footer { color: var(--muted); font-size: .75rem; margin-top: 1.5rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Tasklist</h1>
+      <p class="sub">
+        A small demo app for claimcov. Two of the features listed in its README
+        are deliberately not implemented, so the tool has something to catch.
+      </p>
+
+      <section class="panel" aria-labelledby="add-heading">
+        <h2 id="add-heading" style="font-size: .95rem; margin: 0 0 .75rem">Add a task</h2>
+        <label for="task-title">Title</label>
+        <input id="task-title" data-testid="task-title" placeholder="Write the report" />
+        <div class="row">
+          <label for="task-tag" style="margin: 0; align-self: center">Tag</label>
+          <select id="task-tag" data-testid="task-tag" aria-label="Tag">
+            <option value="work">work</option>
+            <option value="home">home</option>
+            <option value="study">study</option>
+          </select>
+          <button id="add-task" data-testid="add-task" type="button">Add task</button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="filter-heading">
+        <h2 id="filter-heading" style="font-size: .95rem; margin: 0 0 .75rem">Filter by tag</h2>
+        <div class="row" style="margin: 0">
+          <select id="filter-tag" data-testid="filter-tag" aria-label="Filter by tag">
+            <option value="all">all</option>
+            <option value="work">work</option>
+            <option value="home">home</option>
+            <option value="study">study</option>
+          </select>
+          <button class="secondary" id="clear-tasks" data-testid="clear-tasks" type="button">
+            Clear all
+          </button>
+        </div>
+      </section>
+
+      <section class="panel" aria-labelledby="list-heading">
+        <h2 id="list-heading" style="font-size: .95rem; margin: 0 0 .75rem">
+          Tasks (<span id="task-count" data-testid="task-count">0</span>)
+        </h2>
+        <ul id="task-list" data-testid="task-list"></ul>
+        <p class="empty" id="empty-state" data-testid="empty-state">No tasks yet.</p>
+      </section>
+
+      <footer>
+        No export button and no sign-in exist on this page, on purpose.
+      </footer>
+    </main>
+
+    <script>
+      const tasks = [];
+      const list = document.getElementById("task-list");
+      const count = document.getElementById("task-count");
+      const empty = document.getElementById("empty-state");
+      const filter = document.getElementById("filter-tag");
+
+      function render() {
+        const wanted = filter.value;
+        const visible = tasks.filter((t) => wanted === "all" || t.tag === wanted);
+
+        list.replaceChildren();
+        for (const task of visible) {
+          const li = document.createElement("li");
+          li.dataset.testid = "task-row";
+
+          const box = document.createElement("input");
+          box.type = "checkbox";
+          box.checked = task.done;
+          box.setAttribute("aria-label", `Complete ${task.title}`);
+          box.addEventListener("change", () => {
+            task.done = box.checked;
+            render();
+          });
+
+          const title = document.createElement("span");
+          title.textContent = task.title;
+          if (task.done) title.className = "done";
+
+          const tag = document.createElement("span");
+          tag.className = "tag";
+          tag.textContent = task.tag;
+
+          li.append(box, title, tag);
+          list.append(li);
+        }
+
+        count.textContent = String(visible.length);
+        empty.hidden = visible.length > 0;
+      }
+
+      document.getElementById("add-task").addEventListener("click", () => {
+        const title = document.getElementById("task-title");
+        const value = title.value.trim();
+        if (!value) return;
+        tasks.push({ title: value, tag: document.getElementById("task-tag").value, done: false });
+        title.value = "";
+        render();
+      });
+
+      document.getElementById("clear-tasks").addEventListener("click", () => {
+        tasks.length = 0;
+        render();
+      });
+
+      filter.addEventListener("change", render);
+      render();
+    </script>
+  </body>
+</html>
