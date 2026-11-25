@@ -10,7 +10,7 @@ import { writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verify } from "./src/verify.mjs";
 import { summarise, exitCodeFor } from "./src/report.mjs";
-import { saveConfig } from "./src/init.mjs";
+import { saveConfig, loadConfig } from "./src/init.mjs";
 
 /** Collect `--var name=value` (repeatable) and `--tag-values a,b`. */
 function collectInputs() {
@@ -87,8 +87,9 @@ if (command === "init") {
 }
 
 if (command === "verify") {
-  const doc = positionals[1];
-  const url = args.url ?? positionals[2];
+  const stored = await loadConfig(args.dir);
+  const doc = positionals[1] ?? stored.doc;
+  const url = args.url ?? positionals[2] ?? stored.url;
 
   if (!doc) {
     process.stderr.write("a document is required\n");
