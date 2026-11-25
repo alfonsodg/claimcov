@@ -8,7 +8,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-28%20passing-brightgreen.svg">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-75%20passing-brightgreen.svg">
   <img alt="Built on" src="https://img.shields.io/badge/built%20on-Kane%20CLI-blue.svg">
 </p>
 
@@ -119,7 +119,7 @@ complete: 6 use-cases derived, 1 question(s) answered automatically
 $ node cli.mjs verify docs/demo/README.md --url https://.../demo/ \
   --tag-values work,home
 found 5 claim(s): uc-1..uc-5
-design uc-1: complete      (after --allow-unreviewed)
+design uc-1: complete      (after context review --approve)
 variables: filled start_url, tag_name, other_tag_name
 testrun: complete
 cover: complete
@@ -171,7 +171,7 @@ No shared project is needed: Kane keeps a local store in `.context/`.
 npm test
 ```
 
-28 tests, none of which need Kane, a browser or credits. The spawn path is
+75 tests, none of which need Kane, a browser or credits. The spawn path is
 exercised through a stub binary that reproduces the real NDJSON stream and exit
 codes.
 
