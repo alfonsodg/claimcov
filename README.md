@@ -8,7 +8,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-75%20passing-brightgreen.svg">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-88%20passing-brightgreen.svg">
   <img alt="Built on" src="https://img.shields.io/badge/built%20on-Kane%20CLI-blue.svg">
 </p>
 
@@ -48,23 +48,28 @@ compute the percentage, and emit a report an agent can act on.
 
 ```mermaid
 flowchart LR
-    doc([README / PRD]) --> ingest[context ingest]
+    doc([README / PRD]) --> init[claimcov init]
+    init --> verify[claimcov verify]
+    verify --> ingest[context ingest]
     ingest --> extract[context extract]
     extract -->|exit 3 paused| answer[--answer q1=1]
     answer --> extract
-    extract --> review[context review --approve]
-    review -->|exit 2 refused| review
-    review --> design[design tests]
-    design --> run[testrun run<br/>real Chrome]
+    extract --> design[design tests]
+    design -->|exit 2 refused| approve[context review --approve]
+    approve --> design
+    design --> vars[fill variables]
+    vars --> run[testrun run<br/>real Chrome]
     run --> cover[cover --json]
+    cover --> gaps[cover gaps]
     cover --> pct[claim coverage %]
-    cover --> false[false claims]
-    false --> agent[the agent fixes<br/>code or docs]
+    cover --> false[false claims<br/>with source lines]
+    gaps --> agent[the agent fixes<br/>code or docs]
+    false --> agent
 
     classDef pub fill:#d1fae5,stroke:#10b981,color:#065f46
     classDef loop fill:#dbeafe,stroke:#3b82f6,color:#1e3a8a
-    class doc,ingest,cover,pct,false pub
-    class answer,review,agent loop
+    class doc,init,ingest,cover,pct,false pub
+    class answer,approve,agent loop
 ```
 
 ## The closed loop
@@ -201,7 +206,7 @@ No shared project is needed: Kane keeps a local store in `.context/`.
 npm test
 ```
 
-75 tests, none of which need Kane, a browser or credits. The spawn path is
+88 tests, none of which need Kane, a browser or credits. The spawn path is
 exercised through a stub binary that reproduces the real NDJSON stream and exit
 codes.
 
