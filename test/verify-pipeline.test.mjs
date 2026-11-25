@@ -27,6 +27,10 @@ test("verify runs the pipeline and surfaces cover gaps", async () => {
     });
 
     assert.equal(result.report.summary.total, 2);
+    assert.ok(
+      steps.some((s) => s.step === "recover" && /approve/.test(s.detail ?? "")),
+      "a refused design is approved and retried, not bypassed"
+    );
     assert.equal(result.gaps.length, 1);
     assert.equal(result.gaps[0].ref, "gap-9");
     assert.match(result.gaps[0].command, /design tests/);

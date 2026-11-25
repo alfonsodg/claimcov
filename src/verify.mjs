@@ -12,7 +12,7 @@ import { copyFile, mkdir, access } from "node:fs/promises";
 import { constants } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { OUTCOME } from "./kane.mjs";
-import { runUntilDone } from "./loop.mjs";
+import { runUntilDone, recoverAndRetry } from "./loop.mjs";
 import {
   coverageEvent,
   gapsEvent,
@@ -125,31 +125,30 @@ export async function verify(opts = {}) {
   record({ step: "claims", outcome: "found", count: ids.length, ids });
 
   // 3. Design a test per claim. A refusal here means the claim is unreviewed.
-  //    Kane offers two ways forward; appending the flag is deterministic and
-  //    avoids parsing (and possibly mis-parsing) the recovery command it printed.
+  //    The documented recovery is the approval Kane names (`context review
+  //    --approve`); bypassing the review would skip the audit trail, so the
+  //    loop approves and retries instead.
   const designed = [];
   for (const id of ids) {
     const argv = ["design", "tests", "--use-case", id, "--mode", "agent"];
     let run = await runUntilDone(argv, { cwd, url, bin, prefix, onStep: (s) => record(s) });
 
     if (run.outcome === OUTCOME.REFUSED) {
-      const recovery = (run.next ?? []).find((n) =>
-        /--allow-unreviewed/.test(n.cmd ?? "")
-      );
-      record({
-        step: "recover",
-        id,
-        outcome: recovery ? "retrying" : "no flag offered",
-        detail: run.code_name ?? run.error,
+      const retried = await recoverAndRetry(argv, run, {
+        cwd,
+        url,
+        bin,
+        prefix,
+        onStep: (s) => record(s),
       });
-
-      if (recovery) {
-        run = await runUntilDone([...argv, "--allow-unreviewed"], {
-          cwd,
-          url,
-          bin,
-          prefix,
-          onStep: (s) => record(s),
+      if (retried) {
+        run = retried;
+      } else {
+        record({
+          step: "recover",
+          id,
+          outcome: "no approval offered",
+          detail: run.code_name ?? run.error,
         });
       }
     }
