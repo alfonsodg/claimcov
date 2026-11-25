@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   toClaim,
   coverageEvent,
+  gapsEvent,
   buildReport,
   buildGaps,
   summarise,
@@ -178,6 +179,18 @@ test("buildGaps collects pending work and other gaps", () => {
 test("buildGaps tolerates a missing event", () => {
   assert.deepEqual(buildGaps(null), []);
   assert.deepEqual(buildGaps({}), []);
+});
+
+test("gapsEvent finds the pending-work event", () => {
+  const gaps = { type: "gaps", usecases: [], other: [] };
+  assert.equal(gapsEvent([COVERAGE, gaps]), gaps);
+  assert.equal(gapsEvent({ events: [gaps] }), gaps);
+});
+
+test("gapsEvent never mistakes the coverage event for gaps", () => {
+  assert.equal(gapsEvent([COVERAGE]), null, "coverage carries usecases as an object, not an array");
+  assert.equal(gapsEvent([]), null);
+  assert.equal(gapsEvent(null), null);
 });
 
 test("summarise is a one-liner that names what is wrong", () => {

@@ -106,6 +106,9 @@ if (command === "verify") {
     for (const c of result.report.claims) {
       log(`  ${c.status.padEnd(8)} ${c.title}`);
     }
+    if (result.gaps?.length) {
+      log(`  ${result.gaps.length} gap(s) pending — ready commands are in the report`);
+    }
   }
 
   process.exit(exitCodeFor(result.report));
@@ -122,6 +125,9 @@ if (command === "report") {
   process.stdout.write(`${summarise(report)}\n`);
   for (const c of report.claims ?? []) {
     process.stdout.write(`  ${c.status.padEnd(8)} ${c.title}\n`);
+  }
+  for (const g of saved.gaps ?? []) {
+    process.stdout.write(`  gap      ${g.ref}: ${g.why} — ${g.command}\n`);
   }
   process.exit(exitCodeFor(report));
 }

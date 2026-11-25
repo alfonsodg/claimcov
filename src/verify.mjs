@@ -13,7 +13,14 @@ import { constants } from "node:fs";
 import { basename, join, resolve } from "node:path";
 import { OUTCOME } from "./kane.mjs";
 import { runUntilDone } from "./loop.mjs";
-import { coverageEvent, buildReport, summarise, exitCodeFor } from "./report.mjs";
+import {
+  coverageEvent,
+  gapsEvent,
+  buildReport,
+  buildGaps,
+  summarise,
+  exitCodeFor,
+} from "./report.mjs";
 import { applyVariables } from "./variables.mjs";
 
 const exists = async (p) => {
@@ -53,6 +60,8 @@ export function useCaseIds(events) {
  * @param {boolean} [opts.skipRun]     design but do not execute
  * @param {string[]} [opts.tagValues]  values for tag-like variables
  * @param {object} [opts.extra]        explicit variable values by name
+ * @param {string} [opts.bin]          kane-cli binary, defaults to kane-cli
+ * @param {string[]} [opts.prefix]     argv prefix for the test stub
  * @param {(s:object)=>void} [opts.onStep]
  */
 export async function verify(opts = {}) {
@@ -64,6 +73,8 @@ export async function verify(opts = {}) {
     skipRun = false,
     tagValues,
     extra,
+    bin,
+    prefix,
     onStep,
   } = opts;
 
@@ -89,6 +100,8 @@ export async function verify(opts = {}) {
   const ingest = await runUntilDone(["context", "ingest", basename(source)], {
     cwd,
     url,
+    bin,
+    prefix,
   });
   record({ step: "ingest", outcome: ingest.outcome });
   if (ingest.outcome !== OUTCOME.COMPLETE) {
@@ -99,6 +112,8 @@ export async function verify(opts = {}) {
   const extract = await runUntilDone(["context", "extract", "--mode", "agent"], {
     cwd,
     url,
+    bin,
+    prefix,
     onStep: (s) => record(s),
   });
   record({ step: "extract", outcome: extract.outcome, resumes: extract.resumes });
@@ -115,7 +130,7 @@ export async function verify(opts = {}) {
   const designed = [];
   for (const id of ids) {
     const argv = ["design", "tests", "--use-case", id, "--mode", "agent"];
-    let run = await runUntilDone(argv, { cwd, url, onStep: (s) => record(s) });
+    let run = await runUntilDone(argv, { cwd, url, bin, prefix, onStep: (s) => record(s) });
 
     if (run.outcome === OUTCOME.REFUSED) {
       const recovery = (run.next ?? []).find((n) =>
@@ -132,6 +147,8 @@ export async function verify(opts = {}) {
         run = await runUntilDone([...argv, "--allow-unreviewed"], {
           cwd,
           url,
+          bin,
+          prefix,
           onStep: (s) => record(s),
         });
       }
@@ -156,7 +173,7 @@ export async function verify(opts = {}) {
   //    `testrun` takes `--agent`, not `--mode agent`: it is the NDJSON switch,
   //    and an unknown option is a hard refusal with exit 2.
   if (!skipRun && designed.some((d) => d.outcome === OUTCOME.COMPLETE)) {
-    const run = await runUntilDone(["testrun", "run", "--agent"], { cwd, url });
+    const run = await runUntilDone(["testrun", "run", "--agent"], { cwd, url, bin, prefix });
     record({ step: "testrun", outcome: run.outcome, error: run.error });
   }
 
@@ -164,8 +181,24 @@ export async function verify(opts = {}) {
   const cover = await runUntilDone(["cover", "--json", "--mode", "agent"], {
     cwd,
     url,
+    bin,
+    prefix,
   });
   record({ step: "cover", outcome: cover.outcome });
+
+  // 5b. Pending work. `cover gaps` names what is still owed and the command
+  //     that unblocks it, which is what makes the report actionable.
+  let gaps = [];
+  if (cover.outcome === OUTCOME.COMPLETE) {
+    const gapsRun = await runUntilDone(["cover", "gaps", "--json", "--mode", "agent"], {
+      cwd,
+      url,
+      bin,
+      prefix,
+    });
+    record({ step: "gaps", outcome: gapsRun.outcome });
+    gaps = buildGaps(gapsEvent(gapsRun.events));
+  }
 
   const coverage = coverageEvent(cover.events);
   const report = buildReport(coverage);
@@ -181,7 +214,7 @@ export async function verify(opts = {}) {
     failedAt: null,
     steps,
     report,
-    gaps: [],
+    gaps,
     designed,
   };
 }

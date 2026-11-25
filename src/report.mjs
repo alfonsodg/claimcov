@@ -73,6 +73,25 @@ export function coverageEvent(events) {
 }
 
 /**
+ * Find the pending-work event in a run.
+ *
+ * `cover gaps --json` emits the gaps payload; like `coverageEvent` this
+ * accepts either the events array or the classified run. Events that only
+ * carry `usecases`/`other` arrays (no explicit type) are accepted too, so a
+ * future CLI version that renames the type does not silently drop the gaps.
+ */
+export function gapsEvent(events) {
+  const list = Array.isArray(events) ? events : (events?.events ?? []);
+  return (
+    [...list].reverse().find(
+      (e) =>
+        e?.type === "gaps" ||
+        (e && typeof e === "object" && (Array.isArray(e.usecases) || Array.isArray(e.other)))
+    ) ?? null
+  );
+}
+
+/**
  * Build the claim report from a coverage event.
  *
  * @param {object} coverage the `coverage` event from `cover --json`
