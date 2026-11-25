@@ -8,7 +8,7 @@
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg"></a>
   <img alt="Node 20+" src="https://img.shields.io/badge/node-%3E%3D20-brightgreen.svg">
-  <img alt="Tests" src="https://img.shields.io/badge/tests-28%20passing-brightgreen.svg">
+  <img alt="Tests" src="https://img.shields.io/badge/tests-75%20passing-brightgreen.svg">
   <img alt="Built on" src="https://img.shields.io/badge/built%20on-Kane%20CLI-blue.svg">
 </p>
 
@@ -97,9 +97,25 @@ A pause carries everything needed to continue:
 number. Getting that off by one silently answers the wrong option, so it is
 pinned by a test.
 
-## Verified against the real CLI
+### Remember the inputs
 
-The loop was closed end to end against Kane CLI 0.10.8, not simulated:
+`verify` needs the document, the product URL and the tag values every time.
+`init` writes them once into `<dir>/claimcov.json` so later runs need no flags:
+
+```text
+$ node cli.mjs init docs/demo/README.md https://.../demo/ \
+  --tag-values work,home
+initialized .claimcov: docs/demo/README.md vs https://.../demo/
+$ node cli.mjs verify
+```
+
+Explicit flags always win over the stored file.
+
+## Verified against the real CLI and a real browser
+
+Run on a headless Sandbox host, against a live demo app, not simulated.
+
+**The loop:**
 
 ```text
 $ node scripts/verify-loop.mjs doc.md work
@@ -111,7 +127,62 @@ resume -> complete
 complete: 6 use-cases derived, 1 question(s) answered automatically
 ```
 
-Cost: about 3 credits of an 11,200 balance.
+**The coverage (live run, 25 Nov 2026, Kane CLI 0.10.8):**
+
+```text
+$ node cli.mjs init docs/demo/README.md https://.../demo/ \
+  --tag-values work,home
+$ node cli.mjs verify --dir ~/.claimcov-live
+found 5 claim(s): uc-1..uc-5
+design uc-1..uc-5: complete (after context review --approve)
+variables: filled
+testrun: failed
+cover: complete
+gaps: complete
+
+0/5 claims proven · 2 false · 3 unproven (58%)
+  false    Sign in with Google (readme:16)
+  false    Export all tasks to CSV (readme:15)
+  owed     Create a tagged task (readme:12)
+  owed     Mark a task complete (readme:13)
+  owed     Filter tasks by tag (readme:14)
+  16 gap(s) pending — ready commands are in the report
+```
+
+`verify` ran with no document or URL flags: everything came from `init`.
+`testrun: failed` is Kane's exit on the failing acceptance criteria; the
+coverage it left behind is complete and authoritative.
+
+**Reconciling the verdict.** The three `owed` claims above are not unproven:
+`cover` reported their state as `proven`, but the report only recognised
+`covered` and printed them as owed. The mapper now accepts both, which
+recomputes this exact run to **3/5 proven · 2 false** — the ground truth (the
+app creates, completes and filters tasks; sign-in and CSV export do not
+exist). The `(readme:16)` citations come from Kane's store, joined by
+`src/sources.mjs`.
+
+### Three things this cost
+
+All three were found by running it against a live page, and all three are now
+covered by tests:
+
+**Kane declares variables it does not fill.** `design tests` writes
+`{{start_url}}` into every test body and leaves the value empty. A test with an
+empty input fails, and Kane reports it as an ordinary failure — so the whole
+document looks like a lie when the real problem is a missing input.
+`src/variables.mjs` fills what can be inferred and refuses to invent a secret.
+
+**`testrun` takes `--agent`, not `--mode agent`.** The unknown option is a hard
+refusal with exit 2, so the tests never ran and `cover` had nothing to report.
+
+**`cover` says `proven`, the report only knew `covered`.** Both strings appear
+in real `cover --json` output across runs. `STATE_TO_STATUS` maps both to
+proven; anything else unknown stays owed, never proven.
+
+Tag values are never invented: without `--tag-values work,home` (or repeatable
+`--var name=value`) the tag variables stay empty and are reported as owed.
+
+Cost of the full cycle: 331 credits (10,195 → 9,865).
 
 ## Install
 
@@ -130,7 +201,7 @@ No shared project is needed: Kane keeps a local store in `.context/`.
 npm test
 ```
 
-28 tests, none of which need Kane, a browser or credits. The spawn path is
+75 tests, none of which need Kane, a browser or credits. The spawn path is
 exercised through a stub binary that reproduces the real NDJSON stream and exit
 codes.
 

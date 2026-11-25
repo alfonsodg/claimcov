@@ -29,7 +29,10 @@ export const CLAIM = {
  * not silently pass.
  */
 const STATE_TO_STATUS = {
+  // Both appear in real `cover --json` output across runs; both mean the
+  // run proved the claim. Anything unrecognised stays owed, never proven.
   covered: CLAIM.PROVEN,
+  proven: CLAIM.PROVEN,
   failing: CLAIM.FALSE,
   failed: CLAIM.FALSE,
   partial: CLAIM.PARTIAL,
@@ -46,7 +49,7 @@ const STATE_TO_STATUS = {
  * @param {object} uc a `perUc` entry
  * @returns {object} a claim
  */
-export function toClaim(uc) {
+export function toClaim(uc, src = {}) {
   const status = STATE_TO_STATUS[uc?.state] ?? CLAIM.OWED;
   return {
     id: uc?.id ?? "unknown",
@@ -58,6 +61,9 @@ export function toClaim(uc) {
     proven: uc?.proven ?? 0,
     pct: typeof uc?.pct === "number" ? uc.pct : 0,
     stale: uc?.stale === true,
+    line: Number.isInteger(src?.line) ? src.line : null,
+    source: typeof src?.source === "string" ? src.source : null,
+    quote: typeof src?.quote === "string" ? src.quote : null,
   };
 }
 
@@ -73,15 +79,35 @@ export function coverageEvent(events) {
 }
 
 /**
+ * Find the pending-work event in a run.
+ *
+ * `cover gaps --json` emits the gaps payload; like `coverageEvent` this
+ * accepts either the events array or the classified run. Events that only
+ * carry `usecases`/`other` arrays (no explicit type) are accepted too, so a
+ * future CLI version that renames the type does not silently drop the gaps.
+ */
+export function gapsEvent(events) {
+  const list = Array.isArray(events) ? events : (events?.events ?? []);
+  return (
+    [...list].reverse().find(
+      (e) =>
+        e?.type === "gaps" ||
+        (e && typeof e === "object" && (Array.isArray(e.usecases) || Array.isArray(e.other)))
+    ) ?? null
+  );
+}
+
+/**
  * Build the claim report from a coverage event.
  *
  * @param {object} coverage the `coverage` event from `cover --json`
+ * @param {object} [sources] `{ucId: {line, quote, source}}` from the store
  * @returns {{summary:object, claims:object[]}|null}
  */
-export function buildReport(coverage) {
+export function buildReport(coverage, sources = {}) {
   if (!coverage || !Array.isArray(coverage.perUc)) return null;
 
-  const claims = coverage.perUc.map(toClaim);
+  const claims = coverage.perUc.map((uc) => toClaim(uc, sources?.[uc?.id]));
 
   const count = (status) => claims.filter((c) => c.status === status).length;
   const proven = count(CLAIM.PROVEN);

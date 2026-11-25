@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { parseEvent, classify, EXIT, OUTCOME } from "../src/kane.mjs";
+import { parseEvent, classify, normaliseNext, EXIT, OUTCOME } from "../src/kane.mjs";
 
 /** Fixtures are real events captured from kane-cli 0.10.8. */
 
@@ -101,4 +101,32 @@ test("unknown non-zero code is a failure", () => {
 
 test("classify tolerates an empty stream", () => {
   assert.equal(classify([], 0).outcome, OUTCOME.COMPLETE);
+});
+
+test("next hints are normalised from strings and objects alike", () => {
+  // The done event carries objects, the error event carries bare strings.
+  // A caller that assumed one shape got [null] instead of the command.
+  const fromStrings = normaliseNext(["kane-cli context review --approve uc-5"]);
+  assert.deepEqual(fromStrings, [{ cmd: "kane-cli context review --approve uc-5" }]);
+
+  const fromObjects = normaliseNext([{ cmd: "kane-cli cover", why: "next" }]);
+  assert.equal(fromObjects[0].cmd, "kane-cli cover");
+
+  assert.deepEqual(normaliseNext([]), []);
+  assert.deepEqual(normaliseNext(null), []);
+  assert.deepEqual(normaliseNext([null, {}, { cmd: "" }]), []);
+});
+
+test("a refused run keeps the command from the error event", () => {
+  const errorOnly = {
+    type: "error",
+    v: 1,
+    code: "UC_UNREVIEWED",
+    message: "unreviewed",
+    next: ["kane-cli context review --approve uc-1", "kane-cli design tests --allow-unreviewed"],
+  };
+  const r = classify([errorOnly], EXIT.REFUSED);
+  assert.equal(r.next.length, 2);
+  assert.match(r.next[0].cmd, /context review --approve/);
+  assert.match(r.next[1].cmd, /--allow-unreviewed/);
 });

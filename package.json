@@ -23,7 +23,7 @@
     "verification"
   ],
   "peerDependencies": {
-    "@testmuai/kane-cli": ">=0.10.0"
+    "@testmuai/kane-cli": "0.10.8"
   },
   "peerDependenciesMeta": {
     "@testmuai/kane-cli": {

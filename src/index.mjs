@@ -1,0 +1,29 @@
+/**
+ * claimcov public surface, for programmatic consumers.
+ *
+ * The CLI (`cli.mjs`) stays the primary interface; this module re-exports the
+ * pieces an agent loop may want to call directly.
+ */
+export { runKane, classify, parseEvent, normaliseNext, EXIT, OUTCOME } from "./kane.mjs";
+export { runUntilDone, recoverAndRetry, overridesFor } from "./loop.mjs";
+export {
+  answerOption,
+  answerFlags,
+  resumeArgv,
+  commandToArgv,
+  describePause,
+} from "./resume.mjs";
+export {
+  toClaim,
+  coverageEvent,
+  gapsEvent,
+  buildReport,
+  buildGaps,
+  summarise,
+  exitCodeFor,
+  CLAIM,
+} from "./report.mjs";
+export { planVariables, applyVariables, readVariables, VARIABLES_PATH } from "./variables.mjs";
+export { verify, useCaseIds, useCaseCids } from "./verify.mjs";
+export { parseAnchor, readClaimSources } from "./sources.mjs";
+export { saveConfig, loadConfig, CONFIG_PATH } from "./init.mjs";

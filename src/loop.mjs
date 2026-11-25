@@ -111,6 +111,7 @@ export async function runUntilDone(argv, opts = {}) {
  * @param {object} [opts]           same options as runUntilDone
  */
 export async function recoverAndRetry(argv, refused, opts = {}) {
+  const { cwd, bin, prefix = [], timeoutMs, onStep } = opts;
   const recovery = (refused.next ?? []).find((n) =>
     /context review --approve/.test(n.cmd ?? "")
   );
@@ -118,9 +119,9 @@ export async function recoverAndRetry(argv, refused, opts = {}) {
   if (!recovery) return null;
 
   const recoveryArgv = recovery.cmd.replace(/^kane-cli\s+/, "").split(/\s+/);
-  const fixed = await runKane(recoveryArgv, { cwd: opts.cwd });
+  const fixed = await runKane([...prefix, ...recoveryArgv], { cwd, bin, timeoutMs });
 
-  opts.onStep?.({
+  onStep?.({
     step: "recover",
     outcome: fixed.outcome,
     detail: recovery.cmd,

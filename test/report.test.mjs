@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import {
   toClaim,
   coverageEvent,
+  gapsEvent,
   buildReport,
   buildGaps,
   summarise,
@@ -62,6 +63,7 @@ const COVERAGE = {
 
 test("maps Kane states to claim statuses", () => {
   assert.equal(toClaim({ state: "covered" }).status, CLAIM.PROVEN);
+  assert.equal(toClaim({ state: "proven" }).status, CLAIM.PROVEN);
   assert.equal(toClaim({ state: "failing" }).status, CLAIM.FALSE);
   assert.equal(toClaim({ state: "failed" }).status, CLAIM.FALSE);
   assert.equal(toClaim({ state: "partial" }).status, CLAIM.PARTIAL);
@@ -137,6 +139,29 @@ test("buildReport returns null without perUc", () => {
   assert.equal(buildReport({}), null);
 });
 
+test("toClaim carries the source line when the store cited one", () => {
+  const c = toClaim(
+    { id: "uc-1", title: "Sign in", state: "failing" },
+    { line: 16, quote: "- Sign in with Google", source: "readme" }
+  );
+  assert.equal(c.line, 16);
+  assert.equal(c.source, "readme");
+  assert.equal(c.quote, "- Sign in with Google");
+});
+
+test("toClaim leaves the line empty when nothing cited it", () => {
+  const c = toClaim({ id: "uc-1", state: "covered" });
+  assert.equal(c.line, null);
+  assert.equal(c.source, null);
+  assert.equal(c.quote, null);
+});
+
+test("buildReport merges the store citations into claims", () => {
+  const r = buildReport(COVERAGE, { "uc-1": { line: 16, quote: "q", source: "readme" } });
+  assert.equal(r.claims.find((c) => c.id === "uc-1").line, 16);
+  assert.equal(r.claims.find((c) => c.id === "uc-2").line, null);
+});
+
 test("buildGaps collects pending work and other gaps", () => {
   const gaps = {
     usecases: [
@@ -178,6 +203,18 @@ test("buildGaps collects pending work and other gaps", () => {
 test("buildGaps tolerates a missing event", () => {
   assert.deepEqual(buildGaps(null), []);
   assert.deepEqual(buildGaps({}), []);
+});
+
+test("gapsEvent finds the pending-work event", () => {
+  const gaps = { type: "gaps", usecases: [], other: [] };
+  assert.equal(gapsEvent([COVERAGE, gaps]), gaps);
+  assert.equal(gapsEvent({ events: [gaps] }), gaps);
+});
+
+test("gapsEvent never mistakes the coverage event for gaps", () => {
+  assert.equal(gapsEvent([COVERAGE]), null, "coverage carries usecases as an object, not an array");
+  assert.equal(gapsEvent([]), null);
+  assert.equal(gapsEvent(null), null);
 });
 
 test("summarise is a one-liner that names what is wrong", () => {

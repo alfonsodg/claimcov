@@ -70,6 +70,31 @@ if (has("--hang")) {
   });
   emit({ type: "done", v: 1, status: "paused", exit_code: 3 });
   process.exit(3);
+} else if (argv[0] === "cover" && argv[1] === "gaps") {
+  emit({
+    type: "gaps",
+    v: 1,
+    verb: "cover",
+    usecases: [
+      {
+        id: "uc-2",
+        title: "Export to CSV",
+        pending: [
+          {
+            ref: "gap-9",
+            kind: "missing_input",
+            why: "no start URL was supplied for uc-2",
+            risk: "med",
+            stage: "testrun",
+            ready_command: "kane-cli design tests --use-case uc-2",
+          },
+        ],
+      },
+    ],
+    other: [],
+  });
+  emit({ type: "done", v: 1, status: "complete", exit_code: 0 });
+  process.exit(0);
 } else if (argv[0] === "cover") {
   emit({
     type: "coverage",
@@ -85,7 +110,17 @@ if (has("--hang")) {
   emit({ type: "done", v: 1, status: "complete", exit_code: 0 });
   process.exit(0);
 } else if (has("--resume") || has("--approve")) {
-  emit({ type: "commit", v: 1, derived: 6 });
+  emit({
+    type: "commit",
+    v: 1,
+    verb: "extract",
+    source_id: "readme",
+    derived: 2,
+    minted: [
+      { cid: "sha256:aa", logical_id: "uc-1" },
+      { cid: "sha256:bb", logical_id: "uc-2" },
+    ],
+  });
   emit({ type: "done", v: 1, status: "complete", exit_code: 0 });
   process.exit(0);
 } else {
