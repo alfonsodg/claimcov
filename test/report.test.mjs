@@ -63,6 +63,7 @@ const COVERAGE = {
 
 test("maps Kane states to claim statuses", () => {
   assert.equal(toClaim({ state: "covered" }).status, CLAIM.PROVEN);
+  assert.equal(toClaim({ state: "proven" }).status, CLAIM.PROVEN);
   assert.equal(toClaim({ state: "failing" }).status, CLAIM.FALSE);
   assert.equal(toClaim({ state: "failed" }).status, CLAIM.FALSE);
   assert.equal(toClaim({ state: "partial" }).status, CLAIM.PARTIAL);

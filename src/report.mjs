@@ -29,7 +29,10 @@ export const CLAIM = {
  * not silently pass.
  */
 const STATE_TO_STATUS = {
+  // Both appear in real `cover --json` output across runs; both mean the
+  // run proved the claim. Anything unrecognised stays owed, never proven.
   covered: CLAIM.PROVEN,
+  proven: CLAIM.PROVEN,
   failing: CLAIM.FALSE,
   failed: CLAIM.FALSE,
   partial: CLAIM.PARTIAL,

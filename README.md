@@ -127,32 +127,44 @@ resume -> complete
 complete: 6 use-cases derived, 1 question(s) answered automatically
 ```
 
-**The coverage:**
+**The coverage (live run, 25 Nov 2026, Kane CLI 0.10.8):**
 
 ```text
-$ node cli.mjs verify docs/demo/README.md --url https://.../demo/ \
+$ node cli.mjs init docs/demo/README.md https://.../demo/ \
   --tag-values work,home
+$ node cli.mjs verify --dir ~/.claimcov-live
 found 5 claim(s): uc-1..uc-5
-design uc-1: complete      (after context review --approve)
-variables: filled start_url, tag_name, other_tag_name
-testrun: complete
+design uc-1..uc-5: complete (after context review --approve)
+variables: filled
+testrun: failed
 cover: complete
+gaps: complete
 
-1/5 claims proven · 4 false (21%)
-  proven   Create a tag
-  failing  Sign in with Google
-  failing  Mark a task complete
-  failing  Filter tasks by tag
-  failing  Export all tasks to CSV
+0/5 claims proven · 2 false · 3 unproven (58%)
+  false    Sign in with Google (readme:16)
+  false    Export all tasks to CSV (readme:15)
+  owed     Create a tagged task (readme:12)
+  owed     Mark a task complete (readme:13)
+  owed     Filter tasks by tag (readme:14)
+  16 gap(s) pending — ready commands are in the report
 ```
 
-The demo app implements the first and none of the rest, so the verdict matches
-reality: the one true claim is proven and the four false ones are named.
+`verify` ran with no document or URL flags: everything came from `init`.
+`testrun: failed` is Kane's exit on the failing acceptance criteria; the
+coverage it left behind is complete and authoritative.
 
-### Two things this cost
+**Reconciling the verdict.** The three `owed` claims above are not unproven:
+`cover` reported their state as `proven`, but the report only recognised
+`covered` and printed them as owed. The mapper now accepts both, which
+recomputes this exact run to **3/5 proven · 2 false** — the ground truth (the
+app creates, completes and filters tasks; sign-in and CSV export do not
+exist). The `(readme:16)` citations come from Kane's store, joined by
+`src/sources.mjs`.
 
-Both were found by running it against a live page, and both are now covered by
-tests:
+### Three things this cost
+
+All three were found by running it against a live page, and all three are now
+covered by tests:
 
 **Kane declares variables it does not fill.** `design tests` writes
 `{{start_url}}` into every test body and leaves the value empty. A test with an
@@ -163,10 +175,14 @@ document looks like a lie when the real problem is a missing input.
 **`testrun` takes `--agent`, not `--mode agent`.** The unknown option is a hard
 refusal with exit 2, so the tests never ran and `cover` had nothing to report.
 
+**`cover` says `proven`, the report only knew `covered`.** Both strings appear
+in real `cover --json` output across runs. `STATE_TO_STATUS` maps both to
+proven; anything else unknown stays owed, never proven.
+
 Tag values are never invented: without `--tag-values work,home` (or repeatable
 `--var name=value`) the tag variables stay empty and are reported as owed.
 
-Cost of the full cycle: roughly 200 credits of an 11,200 balance.
+Cost of the full cycle: 331 credits (10,195 → 9,865).
 
 ## Install
 
