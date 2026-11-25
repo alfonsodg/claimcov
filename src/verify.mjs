@@ -23,6 +23,7 @@ import {
 } from "./report.mjs";
 import { applyVariables } from "./variables.mjs";
 import { readClaimSources } from "./sources.mjs";
+import { loadConfig } from "./init.mjs";
 
 const exists = async (p) => {
   try {
@@ -82,18 +83,21 @@ export function useCaseCids(events) {
 export async function verify(opts = {}) {
   const {
     doc,
-    url,
     cwd = resolve(".claimcov"),
     maxUseCases = 10,
     skipRun = false,
-    tagValues,
-    extra,
     bin,
     prefix,
     onStep,
   } = opts;
 
   if (!doc) throw new Error("a document is required");
+
+  // Stored inputs are defaults; explicit options always win.
+  const stored = await loadConfig(cwd);
+  const url = opts.url ?? stored.url;
+  const tagValues = opts.tagValues ?? stored.tagValues;
+  const extra = opts.extra ?? stored.extra;
   const step = (s) => onStep?.({ ...s });
   const steps = [];
 

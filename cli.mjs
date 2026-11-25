@@ -10,6 +10,20 @@ import { writeFile, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { verify } from "./src/verify.mjs";
 import { summarise, exitCodeFor } from "./src/report.mjs";
+import { saveConfig } from "./src/init.mjs";
+
+/** Collect `--var name=value` (repeatable) and `--tag-values a,b`. */
+function collectInputs() {
+  const extra = {};
+  for (const item of args.var ?? []) {
+    const i = item.indexOf("=");
+    if (i > 0) extra[item.slice(0, i)] = item.slice(i + 1);
+  }
+  const tagValues = args["tag-values"]
+    ? args["tag-values"].split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+  return { extra, tagValues };
+}
 
 const { values: args, positionals } = parseArgs({
   allowPositionals: true,
@@ -34,8 +48,9 @@ if (args.help || !command) {
 
   claimcov verify <doc> [url]    run the pipeline and report claim coverage
   claimcov report <file>         re-print a saved report
+  claimcov init <doc> [url]      remember inputs for later verify runs
 
-Options for verify:
+Options for verify and init:
   --url <url>       the product URL the claims refer to
   --dir <path>      working directory for Kane's store, default .claimcov
   --out <path>      write the JSON report here
@@ -55,6 +70,22 @@ Exit codes:
 
 const log = args.quiet ? () => {} : (m) => process.stderr.write(`${m}\n`);
 
+if (command === "init") {
+  const doc = positionals[1];
+  const url = args.url ?? positionals[2];
+
+  if (!doc) {
+    process.stderr.write("a document is required\n");
+    process.exit(2);
+  }
+
+  const { extra, tagValues } = collectInputs();
+  await saveConfig(args.dir, { doc, url, tagValues, extra });
+  log(`initialized ${args.dir}: ${doc}${url ? ` vs ${url}` : ""}`);
+  log("later runs need no flags: claimcov verify");
+  process.exit(0);
+}
+
 if (command === "verify") {
   const doc = positionals[1];
   const url = args.url ?? positionals[2];
@@ -64,14 +95,7 @@ if (command === "verify") {
     process.exit(2);
   }
 
-  const extra = {};
-  for (const item of args.var ?? []) {
-    const i = item.indexOf("=");
-    if (i > 0) extra[item.slice(0, i)] = item.slice(i + 1);
-  }
-  const tagValues = args["tag-values"]
-    ? args["tag-values"].split(",").map((s) => s.trim()).filter(Boolean)
-    : undefined;
+  const { extra, tagValues } = collectInputs();
 
   const result = await verify({
     doc,

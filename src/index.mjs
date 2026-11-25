@@ -26,3 +26,4 @@ export {
 export { planVariables, applyVariables, readVariables, VARIABLES_PATH } from "./variables.mjs";
 export { verify, useCaseIds, useCaseCids } from "./verify.mjs";
 export { parseAnchor, readClaimSources } from "./sources.mjs";
+export { saveConfig, loadConfig, CONFIG_PATH } from "./init.mjs";

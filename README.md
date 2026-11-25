@@ -97,6 +97,20 @@ A pause carries everything needed to continue:
 number. Getting that off by one silently answers the wrong option, so it is
 pinned by a test.
 
+### Remember the inputs
+
+`verify` needs the document, the product URL and the tag values every time.
+`init` writes them once into `<dir>/claimcov.json` so later runs need no flags:
+
+```text
+$ node cli.mjs init docs/demo/README.md https://.../demo/ \
+  --tag-values work,home
+initialized .claimcov: docs/demo/README.md vs https://.../demo/
+$ node cli.mjs verify
+```
+
+Explicit flags always win over the stored file.
+
 ## Verified against the real CLI and a real browser
 
 Run on a headless Sandbox host, against a live demo app, not simulated.

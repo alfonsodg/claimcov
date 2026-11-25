@@ -5,3 +5,4 @@ node_modules/
 .testmuai/
 AGENTS.md
 REMOTE.md
+worktrees/
