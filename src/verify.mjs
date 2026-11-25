@@ -22,6 +22,7 @@ import {
   exitCodeFor,
 } from "./report.mjs";
 import { applyVariables } from "./variables.mjs";
+import { readClaimSources } from "./sources.mjs";
 
 const exists = async (p) => {
   try {
@@ -38,17 +39,31 @@ const exists = async (p) => {
  * `extract` commits them under `minted`, each with a logical id such as `uc-1`.
  */
 export function useCaseIds(events) {
-  const ids = new Set();
+  return [...new Set(useCaseCids(events).map((m) => m.id))];
+}
+
+/**
+ * Collect the minted use-cases with their content ids.
+ *
+ * The `cid` is the join key into Kane's local store, where the DERIVES edges
+ * cite the document line each use-case came from.
+ */
+export function useCaseCids(events) {
+  const seen = new Set();
+  const out = [];
   for (const e of events ?? []) {
     if (e?.type !== "commit") continue;
     // Only the extract verb mints use-cases. The design verb mints gaps and
     // tests, which `design tests --use-case` would reject.
     if (e.verb !== "extract") continue;
     for (const m of e.minted ?? []) {
-      if (m?.logical_id?.startsWith("uc-")) ids.add(m.logical_id);
+      if (m?.logical_id?.startsWith("uc-") && typeof m?.cid === "string" && !seen.has(m.cid)) {
+        seen.add(m.cid);
+        out.push({ id: m.logical_id, cid: m.cid });
+      }
     }
   }
-  return [...ids];
+  return out;
 }
 
 /**
@@ -123,6 +138,11 @@ export async function verify(opts = {}) {
 
   const ids = useCaseIds(extract.events).slice(0, maxUseCases);
   record({ step: "claims", outcome: "found", count: ids.length, ids });
+
+  // 2b. Where each claim comes from. The stream never carries lines; the
+  //     store's DERIVES edges do. Best-effort: no store, no lines.
+  const sources = await readClaimSources(cwd, useCaseCids(extract.events));
+  record({ step: "sources", outcome: "found", count: Object.keys(sources).length });
 
   // 3. Design a test per claim. A refusal here means the claim is unreviewed.
   //    The documented recovery is the approval Kane names (`context review
@@ -200,7 +220,7 @@ export async function verify(opts = {}) {
   }
 
   const coverage = coverageEvent(cover.events);
-  const report = buildReport(coverage);
+  const report = buildReport(coverage, sources);
 
   record({
     step: "result",

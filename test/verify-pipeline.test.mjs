@@ -28,6 +28,10 @@ test("verify runs the pipeline and surfaces cover gaps", async () => {
 
     assert.equal(result.report.summary.total, 2);
     assert.ok(
+      result.report.claims.every((c) => c.line === null),
+      "no store citations from the stub means null lines, not invented ones"
+    );
+    assert.ok(
       steps.some((s) => s.step === "recover" && /approve/.test(s.detail ?? "")),
       "a refused design is approved and retried, not bypassed"
     );

@@ -24,4 +24,5 @@ export {
   CLAIM,
 } from "./report.mjs";
 export { planVariables, applyVariables, readVariables, VARIABLES_PATH } from "./variables.mjs";
-export { verify, useCaseIds } from "./verify.mjs";
+export { verify, useCaseIds, useCaseCids } from "./verify.mjs";
+export { parseAnchor, readClaimSources } from "./sources.mjs";

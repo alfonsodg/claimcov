@@ -46,7 +46,7 @@ const STATE_TO_STATUS = {
  * @param {object} uc a `perUc` entry
  * @returns {object} a claim
  */
-export function toClaim(uc) {
+export function toClaim(uc, src = {}) {
   const status = STATE_TO_STATUS[uc?.state] ?? CLAIM.OWED;
   return {
     id: uc?.id ?? "unknown",
@@ -58,6 +58,9 @@ export function toClaim(uc) {
     proven: uc?.proven ?? 0,
     pct: typeof uc?.pct === "number" ? uc.pct : 0,
     stale: uc?.stale === true,
+    line: Number.isInteger(src?.line) ? src.line : null,
+    source: typeof src?.source === "string" ? src.source : null,
+    quote: typeof src?.quote === "string" ? src.quote : null,
   };
 }
 
@@ -95,12 +98,13 @@ export function gapsEvent(events) {
  * Build the claim report from a coverage event.
  *
  * @param {object} coverage the `coverage` event from `cover --json`
+ * @param {object} [sources] `{ucId: {line, quote, source}}` from the store
  * @returns {{summary:object, claims:object[]}|null}
  */
-export function buildReport(coverage) {
+export function buildReport(coverage, sources = {}) {
   if (!coverage || !Array.isArray(coverage.perUc)) return null;
 
-  const claims = coverage.perUc.map(toClaim);
+  const claims = coverage.perUc.map((uc) => toClaim(uc, sources?.[uc?.id]));
 
   const count = (status) => claims.filter((c) => c.status === status).length;
   const proven = count(CLAIM.PROVEN);

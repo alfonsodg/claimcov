@@ -138,6 +138,29 @@ test("buildReport returns null without perUc", () => {
   assert.equal(buildReport({}), null);
 });
 
+test("toClaim carries the source line when the store cited one", () => {
+  const c = toClaim(
+    { id: "uc-1", title: "Sign in", state: "failing" },
+    { line: 16, quote: "- Sign in with Google", source: "readme" }
+  );
+  assert.equal(c.line, 16);
+  assert.equal(c.source, "readme");
+  assert.equal(c.quote, "- Sign in with Google");
+});
+
+test("toClaim leaves the line empty when nothing cited it", () => {
+  const c = toClaim({ id: "uc-1", state: "covered" });
+  assert.equal(c.line, null);
+  assert.equal(c.source, null);
+  assert.equal(c.quote, null);
+});
+
+test("buildReport merges the store citations into claims", () => {
+  const r = buildReport(COVERAGE, { "uc-1": { line: 16, quote: "q", source: "readme" } });
+  assert.equal(r.claims.find((c) => c.id === "uc-1").line, 16);
+  assert.equal(r.claims.find((c) => c.id === "uc-2").line, null);
+});
+
 test("buildGaps collects pending work and other gaps", () => {
   const gaps = {
     usecases: [

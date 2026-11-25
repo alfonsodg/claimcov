@@ -104,7 +104,8 @@ if (command === "verify") {
     log("");
     log(summarise(result.report));
     for (const c of result.report.claims) {
-      log(`  ${c.status.padEnd(8)} ${c.title}`);
+      const where = c.line === null || c.line === undefined ? "" : ` (${c.source ?? "doc"}:${c.line})`;
+      log(`  ${c.status.padEnd(8)} ${c.title}${where}`);
     }
     if (result.gaps?.length) {
       log(`  ${result.gaps.length} gap(s) pending — ready commands are in the report`);
@@ -124,7 +125,8 @@ if (command === "report") {
   const report = saved.report ?? saved;
   process.stdout.write(`${summarise(report)}\n`);
   for (const c of report.claims ?? []) {
-    process.stdout.write(`  ${c.status.padEnd(8)} ${c.title}\n`);
+    const where = c.line === null || c.line === undefined ? "" : ` (${c.source ?? "doc"}:${c.line})`;
+    process.stdout.write(`  ${c.status.padEnd(8)} ${c.title}${where}\n`);
   }
   for (const g of saved.gaps ?? []) {
     process.stdout.write(`  gap      ${g.ref}: ${g.why} — ${g.command}\n`);

@@ -116,7 +116,10 @@ if (has("--hang")) {
     verb: "extract",
     source_id: "readme",
     derived: 2,
-    minted: [{ logical_id: "uc-1" }, { logical_id: "uc-2" }],
+    minted: [
+      { cid: "sha256:aa", logical_id: "uc-1" },
+      { cid: "sha256:bb", logical_id: "uc-2" },
+    ],
   });
   emit({ type: "done", v: 1, status: "complete", exit_code: 0 });
   process.exit(0);
