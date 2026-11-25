@@ -51,6 +51,8 @@ export function useCaseIds(events) {
  * @param {string} [opts.cwd]          working directory, where .context lives
  * @param {number} [opts.maxUseCases]  cap how many claims get designed
  * @param {boolean} [opts.skipRun]     design but do not execute
+ * @param {string[]} [opts.tagValues]  values for tag-like variables
+ * @param {object} [opts.extra]        explicit variable values by name
  * @param {(s:object)=>void} [opts.onStep]
  */
 export async function verify(opts = {}) {
@@ -60,6 +62,8 @@ export async function verify(opts = {}) {
     cwd = resolve(".claimcov"),
     maxUseCases = 10,
     skipRun = false,
+    tagValues,
+    extra,
     onStep,
   } = opts;
 
@@ -140,7 +144,7 @@ export async function verify(opts = {}) {
   // 3b. Fill in the values the design declared. Without this every test body
   //     still contains {{start_url}}, so it fails for the wrong reason and the
   //     failure looks like a false claim rather than a missing input.
-  const vars = await applyVariables(cwd, { url });
+  const vars = await applyVariables(cwd, { url, tagValues, extra });
   record({
     step: "variables",
     outcome: Object.keys(vars.filled).length ? "filled" : "none",

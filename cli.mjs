@@ -18,6 +18,8 @@ const { values: args, positionals } = parseArgs({
     dir: { type: "string", default: ".claimcov" },
     out: { type: "string" },
     max: { type: "string", default: "10" },
+    "tag-values": { type: "string" },
+    var: { type: "string", multiple: true },
     "skip-run": { type: "boolean", default: false },
     json: { type: "boolean", default: false },
     quiet: { type: "boolean", default: false },
@@ -38,6 +40,8 @@ Options for verify:
   --dir <path>      working directory for Kane's store, default .claimcov
   --out <path>      write the JSON report here
   --max <n>         design at most n claims, default 10
+  --tag-values a,b  values for tag-like variables (no invented defaults)
+  --var name=value  explicit value for one variable (repeatable)
   --skip-run        design but do not execute the tests
   --json            print the report as JSON only
   --quiet           suppress progress on stderr
@@ -60,10 +64,21 @@ if (command === "verify") {
     process.exit(2);
   }
 
+  const extra = {};
+  for (const item of args.var ?? []) {
+    const i = item.indexOf("=");
+    if (i > 0) extra[item.slice(0, i)] = item.slice(i + 1);
+  }
+  const tagValues = args["tag-values"]
+    ? args["tag-values"].split(",").map((s) => s.trim()).filter(Boolean)
+    : undefined;
+
   const result = await verify({
     doc,
     url,
     cwd: args.dir,
+    tagValues,
+    extra,
     maxUseCases: Number(args.max),
     skipRun: args["skip-run"],
     onStep: (s) => {

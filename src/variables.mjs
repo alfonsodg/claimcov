@@ -35,22 +35,29 @@ export async function readVariables(cwd) {
  * The heuristics are deliberately conservative: a variable is only filled when
  * the answer is unambiguous from its name and description. A credential is left
  * empty on purpose, because inventing one would make a later failure misleading.
+ * Tag values are never invented either: they come from `opts.tagValues` (or an
+ * explicit `opts.extra` entry), and without them tag-like variables are
+ * reported as skipped so the operator can supply `--tag-values`.
  *
  * @param {object} declared  the map read from assurance.json
  * @param {object} [opts]
  * @param {string} [opts.url]          the product URL
- * @param {string[]} [opts.tagValues]  tag names to hand out in order
+ * @param {string[]} [opts.tagValues]  tag names to hand out; distinct values go
+ *                                     to plain tags first, then to other-tags,
+ *                                     so the result never depends on the order
+ *                                     Kane declared them in
  * @returns {{filled:object, skipped:object}}
  */
 export function planVariables(declared, opts = {}) {
-  const { url, tagValues = ["work", "home"], extra = {} } = opts;
+  const { url, tagValues = [], extra = {} } = opts;
   const filled = {};
   const skipped = {};
 
   const text = (v) => `${v?.description ?? ""} ${v?.value ?? ""}`.toLowerCase();
 
-  // Tag-like variables get distinct values so a filter test can tell them apart.
-  let tagIndex = 0;
+  // Tag-like variables are collected first and assigned second, so two runs
+  // over the same declarations always agree however Kane ordered them.
+  const tagEntries = [];
 
   for (const [name, def] of Object.entries(declared ?? {})) {
     if (def?.secret) {
@@ -65,25 +72,32 @@ export function planVariables(declared, opts = {}) {
       continue;
     }
 
-    if (/other.*tag|tag.*other|distinct.*tag/.test(hint) && tagIndex < tagValues.length) {
-      filled[name] = tagValues[Math.min(tagIndex + 1, tagValues.length - 1)];
-      tagIndex++;
-      continue;
-    }
-
-    if (/tag/.test(hint) && tagIndex < tagValues.length) {
-      filled[name] = tagValues[tagIndex];
-      tagIndex++;
-      continue;
-    }
-
     const given = extra[name];
     if (given !== undefined) {
       filled[name] = given;
       continue;
     }
 
+    if (/tag/.test(hint)) {
+      tagEntries.push({ name, other: /other.*tag|tag.*other|distinct.*tag/.test(hint) });
+      continue;
+    }
+
     skipped[name] = "no value could be inferred";
+  }
+
+  // Plain tags first, then other-tags: every variable gets a value nobody else
+  // holds while values last, so a filter test can tell the tags apart.
+  const used = new Set();
+  const takeDistinct = () => tagValues.find((v) => !used.has(v));
+  for (const entry of [...tagEntries.filter((e) => !e.other), ...tagEntries.filter((e) => e.other)]) {
+    const value = takeDistinct() ?? tagValues[tagValues.length - 1];
+    if (value === undefined) {
+      skipped[entry.name] = "no tag value supplied: pass --tag-values";
+      continue;
+    }
+    filled[entry.name] = value;
+    used.add(value);
   }
 
   return { filled, skipped };

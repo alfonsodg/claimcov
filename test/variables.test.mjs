@@ -48,6 +48,35 @@ test("gives tag variables distinct values", () => {
   assert.notEqual(filled.other_tag_name, filled.tag_name);
 });
 
+test("tag values do not depend on declaration order", () => {
+  const reversed = {
+    other_tag_name: DECLARED.other_tag_name,
+    tag_name: DECLARED.tag_name,
+  };
+  const { filled } = planVariables(reversed, { tagValues: ["work", "home"] });
+  assert.notEqual(filled.tag_name, filled.other_tag_name);
+  assert.ok(["work", "home"].includes(filled.tag_name));
+  assert.ok(["work", "home"].includes(filled.other_tag_name));
+});
+
+test("no tag values are invented by default", () => {
+  const { filled, skipped } = planVariables(DECLARED, { url: "https://demo.example" });
+  assert.equal(filled.tag_name, undefined);
+  assert.equal(filled.other_tag_name, undefined);
+  assert.ok(!Object.values(filled).includes("work"));
+  assert.ok(!Object.values(filled).includes("home"));
+  assert.match(skipped.tag_name, /tag-values/);
+});
+
+test("an explicit extra value wins over tag inference", () => {
+  const { filled } = planVariables(DECLARED, {
+    tagValues: ["work", "home"],
+    extra: { tag_name: "study" },
+  });
+  assert.equal(filled.tag_name, "study");
+  assert.notEqual(filled.other_tag_name, "study");
+});
+
 test("never invents a secret", () => {
   const { filled, skipped } = planVariables(DECLARED, { url: "https://demo.example" });
   assert.equal(filled.google_test_password, undefined);

@@ -97,9 +97,11 @@ A pause carries everything needed to continue:
 number. Getting that off by one silently answers the wrong option, so it is
 pinned by a test.
 
-## Verified against the real CLI
+## Verified against the real CLI and a real browser
 
-The loop was closed end to end against Kane CLI 0.10.8, not simulated:
+Run on a headless Sandbox host, against a live demo app, not simulated.
+
+**The loop:**
 
 ```text
 $ node scripts/verify-loop.mjs doc.md work
@@ -111,7 +113,46 @@ resume -> complete
 complete: 6 use-cases derived, 1 question(s) answered automatically
 ```
 
-Cost: about 3 credits of an 11,200 balance.
+**The coverage:**
+
+```text
+$ node cli.mjs verify docs/demo/README.md --url https://.../demo/ \
+  --tag-values work,home
+found 5 claim(s): uc-1..uc-5
+design uc-1: complete      (after --allow-unreviewed)
+variables: filled start_url, tag_name, other_tag_name
+testrun: complete
+cover: complete
+
+1/5 claims proven · 4 false (21%)
+  proven   Create a tag
+  failing  Sign in with Google
+  failing  Mark a task complete
+  failing  Filter tasks by tag
+  failing  Export all tasks to CSV
+```
+
+The demo app implements the first and none of the rest, so the verdict matches
+reality: the one true claim is proven and the four false ones are named.
+
+### Two things this cost
+
+Both were found by running it against a live page, and both are now covered by
+tests:
+
+**Kane declares variables it does not fill.** `design tests` writes
+`{{start_url}}` into every test body and leaves the value empty. A test with an
+empty input fails, and Kane reports it as an ordinary failure — so the whole
+document looks like a lie when the real problem is a missing input.
+`src/variables.mjs` fills what can be inferred and refuses to invent a secret.
+
+**`testrun` takes `--agent`, not `--mode agent`.** The unknown option is a hard
+refusal with exit 2, so the tests never ran and `cover` had nothing to report.
+
+Tag values are never invented: without `--tag-values work,home` (or repeatable
+`--var name=value`) the tag variables stay empty and are reported as owed.
+
+Cost of the full cycle: roughly 200 credits of an 11,200 balance.
 
 ## Install
 
