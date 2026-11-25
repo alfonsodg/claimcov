@@ -16,6 +16,7 @@ export {
 export {
   toClaim,
   coverageEvent,
+  gapsEvent,
   buildReport,
   buildGaps,
   summarise,
